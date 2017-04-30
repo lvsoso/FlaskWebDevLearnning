@@ -1,6 +1,7 @@
 #coding=utf-8
 
 import os
+from threading import Thread
 from datetime import datetime
 
 from flask import Flask
@@ -14,6 +15,8 @@ from flask import session
 from flask import url_for
 from flask import flash
 
+from flask_mail import Mail
+from flask_mail import Message 
 from flask_migrate import Migrate, MigrateCommand 
 from flask_script import Shell
 from flask_sqlalchemy import SQLAlchemy
@@ -33,8 +36,22 @@ app.config['SECRET_KEY'] = 'hahaha'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'data.sqlite')
 app.config['SQLALCHEMY_COMMIT_ON_TEARDOWN'] = True
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['MAIL_SERVER'] = 'smtp.263.net'
+app.config['MAIL_PORT'] = 25
+app.config['MAIL_USE_TLS'] = True 
+app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME') 
+app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
+app.config['FLASKY_ADMIN'] = "1070445109@qq.com"
+app.config['FLASKY_MAIL_SUBJECT_PREFIX'] = '[Flasky]' 
+app.config['FLASKY_MAIL_SENDER'] = 'Flasky Admin <flasky@example.com>'
 
+
+#把命令行解析功能添加到hello.py程序中
+manager = Manager(app)
+bootstrap = Bootstrap(app)
+moment = Moment(app)
 db = SQLAlchemy(app)
+mail = Mail(app)
 
 migrate = Migrate(app, db)
 manager.add_command('db', MigrateCommand)
@@ -59,14 +76,6 @@ class User(db.Model):
 
     def __repr__(self):
         return '<User %r>' % self.username
-
-
-
-
-#把命令行解析功能添加到hello.py程序中
-manager = Manager(app)
-bootstrap = Bootstrap(app)
-moment = Moment(app)
 
 
 # @app.route('/', methods=['GET', 'POST'])
@@ -108,6 +117,9 @@ def index():
             user = User(username = form.name.data)
             db.session.add(user)
             session['known'] = False
+            if  app.config['FLASKY_ADMIN']:
+                send_email(app.config['FLASKY_ADMIN'], 'New User', \
+                    'mail/new_user', user=user)
         else:
             session['known'] = True
             flash('Haha !')
@@ -134,6 +146,20 @@ def page_not_found(e):
 @app.errorhandler(500)
 def internal_server_error(e):
     return render_template("500.html"), 500
+
+def send_async_email(app, msg):
+    with app.app_context():
+        mail.send(msg) 
+
+def send_email(to, subject, template, **kwargs):
+    
+    msg = Message(app.config['FLASKY_MAIL_SUBJECT_PREFIX'] + subject, \
+        sender=app.config['FLASKY_MAIL_SENDER'], recipients=[to])
+    msg.body = render_template(template + '.txt', **kwargs)
+    msg.html = render_template(template + '.html', **kwargs)
+    th = Thread(target=send_async_email, args=[app, msg])
+    th.start()
+    return th
 
 def make_shell_context():
     return dict(app=app, db=db, User=User, Role=Role)
