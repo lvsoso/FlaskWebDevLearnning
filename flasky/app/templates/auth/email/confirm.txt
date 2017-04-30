@@ -1,0 +1,8 @@
+ {{ user.username }} 先生/女士,
+    欢迎加入我们！
+    请点击以下链接加入我们：
+    {{ url_for('auth.confirm', token=token, _external=True) }}
+    真诚的，
+    Haha团队。
+    注意:请不要回复此邮件。
+    

@@ -6,6 +6,8 @@ from app import create_app, db
 
 
 class BasicsTestCase(unittest.TestCase):
+    
+    """ 基本测试用例 """
 
     def setUp(self):
         self.app = create_app('testing')
@@ -23,3 +25,8 @@ class BasicsTestCase(unittest.TestCase):
 
     def test_app_is_testing(self):
         self.assertTrue(current_app.config['TESTING'])
+
+
+    
+
+    
